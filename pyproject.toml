@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "wappu_spiriter"
+version = "0.1.0"
+description = ""
+authors = ["Mikael Siidorow <mikael.siidorow@aalto.fi>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+ruff = "^0.0.286"
+mypy = "^1.5.1"
+black = "^23.7.0"
+python-telegram-bot = "^20.4"
+poethepoet = "^0.22.0"
+pydantic = "^2.3.0"
+pydantic-settings = "^2.0.3"
+
+[tool.poe.tasks]
+format = [{ cmd = "black ." }, { cmd = "ruff . --fix" }]
+check = "mypy ."
+lint = "ruff ."
+start = "python -m wappu_spiriter"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
