@@ -16,7 +16,7 @@
 ### Set up
 
 1. Install dependencies `poetry install`
-2. Start bot `poe start`
+2. Start bot and listen to changes `poe dev`
 
 ## Commands
 
