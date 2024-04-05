@@ -1,7 +1,9 @@
+import io
 import logging
 from pathlib import Path
 from shutil import rmtree
 from typing import Dict, List, Tuple, TypedDict
+import matplotlib.pyplot as plt
 
 from PIL import Image
 from telegram import Update, constants
@@ -50,47 +52,60 @@ templates: Dict[str, ImageTemplate] = {
     }
 }
 
+def show_pil_image(image: Image) -> None:
+    plt.imshow(image)
+    plt.show()
 
-async def save_sticker_to_file(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    if not update.message or not update.message.sticker:
-        logger.error("No message in update", update, context)
-        return
+async def get_picture_pil_image_from_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    file_type: str = "photo",
+) -> Image:
+    assert update.message and getattr(update.message, file_type)
+
+    picture = getattr(update.message, file_type)
+    picture_file = await context.bot.get_file(picture[-1])
+    picture_byte_array = await picture_file.download_as_bytearray()
+    pil_image = Image.open(io.BytesIO(picture_byte_array))
+
+    return pil_image
+
+async def get_sticker_pil_image_from_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+) -> Image:
+    assert update.message and update.message.sticker
 
     sticker = update.message.sticker
-    logger.info(sticker)
-
     sticker_file = await context.bot.get_file(sticker)
-    logger.info(sticker_file)
-    file_extension = (
-        sticker_file.file_path.split(".")[-1] if sticker_file.file_path else "webp"
-    )
-    file_name = f"{sticker_file.file_id}.{file_extension}"
-    logger.info(file_name)
+    sticker_byte_array = await sticker_file.download_as_bytearray()
+    pil_image = Image.open(io.BytesIO(sticker_byte_array))
 
-    tmp_dir = Path("tmp") / str(update.message.chat.id)
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    sticker_path = tmp_dir / file_name
-    await sticker_file.download_to_drive(sticker_path)
+    return pil_image
 
-    template = templates["blank"]
-    template_dir = Path("image_templates")
-    blank_template = template_dir / template["file_name"]
-    slot = template["slots"][0]
+async def overlay_pil_image_on_base_image(
+    base_image: Image,
+    overlay_image: Image,
+    target_coordinates: Tuple[Tuple[int, int], Tuple[int, int]],
+) -> Image:
+    scaled_overlay = overlay_image.resize((target_coordinates[1][0] - target_coordinates[0][0], target_coordinates[1][1] - target_coordinates[0][1]))
+    copied_base_image = base_image.copy()
+    copied_base_image.paste(scaled_overlay, target_coordinates[0])
+    return copied_base_image
 
-    template_image = Image.open(blank_template)
-    img_to_insert = Image.open(sticker_path).resize(slot["size"])
-    template_image.paste(img_to_insert, slot["position"])
 
-    combined_file_name = tmp_dir / "combined.webp"
-    template_image.save(combined_file_name)
+async def tick(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+) -> None:
 
-    with open(combined_file_name, "rb") as combined_file_name:
-        await update.message.reply_document(document=combined_file_name)
+    if update.message and update.message.sticker:
+        pil_image = await get_sticker_pil_image_from_message(update, context)
+        #print("Got sticker", show_pil_image(pil_image))
 
-    # clean up tmp files
-    rmtree(tmp_dir)
+    if update.message and update.message.photo:
+        pil_image = await get_picture_pil_image_from_message(update, context)
+        #print("Got photo", show_pil_image(pil_image))
 
 
 async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -233,6 +248,6 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start_game))
     app.add_handler(CommandHandler("new", new_game))
     app.add_handler(CommandHandler("join", join_game))
-    app.add_handler(MessageHandler(filters.Sticker.STATIC, save_sticker_to_file))
+    app.add_handler(MessageHandler(None, tick))
 
-    app.run_polling()
+    app.run_polling() # todo: shorten polling time
