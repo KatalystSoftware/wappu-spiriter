@@ -11,6 +11,7 @@ from telegram.ext import (
     ContextTypes,
     MessageHandler,
     PicklePersistence,
+    filters,
 )
 
 from wappu_spiriter.settings import Settings
@@ -18,6 +19,8 @@ from wappu_spiriter.settings import Settings
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
+
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
@@ -103,6 +106,17 @@ async def overlay_pil_image_on_base_image(
 
 
 async def tick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message or not update.message.from_user:
+        logger.error("No message in update", update, context)
+        return
+
+    active_game_in_chat: int | None = context.bot_data.get(update.message.from_user.id)
+    if active_game_in_chat is None:
+        await update.message.reply_text(
+            "You have not joined a game yet! Create a new game in a chat with /new or join an existing one with /join"
+        )
+        return
+
     if update.message and update.message.sticker:
         pil_image = await get_sticker_pil_image_from_message(update, context)
         # print("Got sticker", show_pil_image(pil_image))
@@ -121,7 +135,9 @@ async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         update.message.chat.type != constants.ChatType.GROUP
         and update.message.chat.type != constants.ChatType.SUPERGROUP
     ):
-        await update.message.reply_text("Games can only be started in group chats!")
+        await update.message.reply_text(
+            "Games can only be started in group chats! Create a new game in a chat with /new"
+        )
         return
 
     active_game: ActiveGame | None = context.bot_data.get(update.message.chat_id)
@@ -252,6 +268,6 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start_game))
     app.add_handler(CommandHandler("new", new_game))
     app.add_handler(CommandHandler("join", join_game))
-    app.add_handler(MessageHandler(None, tick))
+    app.add_handler(MessageHandler(filters.Sticker.STATIC | filters.PHOTO, tick))
 
     app.run_polling()  # todo: shorten polling time
