@@ -1,10 +1,8 @@
 import io
 import logging
-from pathlib import Path
-from shutil import rmtree
 from typing import Dict, List, Tuple, TypedDict
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
 from PIL import Image
 from telegram import Update, constants
 from telegram.ext import (
@@ -13,7 +11,6 @@ from telegram.ext import (
     ContextTypes,
     MessageHandler,
     PicklePersistence,
-    filters,
 )
 
 from wappu_spiriter.settings import Settings
@@ -52,15 +49,20 @@ templates: Dict[str, ImageTemplate] = {
     }
 }
 
-def show_pil_image(image: Image) -> None:
+
+def show_pil_image(image: Image.Image) -> None:
     plt.imshow(image)
     plt.show()
+
+
+ActiveGame = Tuple[int, set[int], bool]
+
 
 async def get_picture_pil_image_from_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     file_type: str = "photo",
-) -> Image:
+) -> Image.Image:
     assert update.message and getattr(update.message, file_type)
 
     picture = getattr(update.message, file_type)
@@ -70,10 +72,10 @@ async def get_picture_pil_image_from_message(
 
     return pil_image
 
+
 async def get_sticker_pil_image_from_message(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-) -> Image:
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> Image.Image:
     assert update.message and update.message.sticker
 
     sticker = update.message.sticker
@@ -83,29 +85,31 @@ async def get_sticker_pil_image_from_message(
 
     return pil_image
 
+
 async def overlay_pil_image_on_base_image(
-    base_image: Image,
-    overlay_image: Image,
+    base_image: Image.Image,
+    overlay_image: Image.Image,
     target_coordinates: Tuple[Tuple[int, int], Tuple[int, int]],
-) -> Image:
-    scaled_overlay = overlay_image.resize((target_coordinates[1][0] - target_coordinates[0][0], target_coordinates[1][1] - target_coordinates[0][1]))
+) -> Image.Image:
+    scaled_overlay = overlay_image.resize(
+        (
+            target_coordinates[1][0] - target_coordinates[0][0],
+            target_coordinates[1][1] - target_coordinates[0][1],
+        )
+    )
     copied_base_image = base_image.copy()
     copied_base_image.paste(scaled_overlay, target_coordinates[0])
     return copied_base_image
 
 
-async def tick(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-) -> None:
-
+async def tick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message and update.message.sticker:
         pil_image = await get_sticker_pil_image_from_message(update, context)
-        #print("Got sticker", show_pil_image(pil_image))
+        # print("Got sticker", show_pil_image(pil_image))
 
     if update.message and update.message.photo:
         pil_image = await get_picture_pil_image_from_message(update, context)
-        #print("Got photo", show_pil_image(pil_image))
+        # print("Got photo", show_pil_image(pil_image))
 
 
 async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -120,7 +124,7 @@ async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_text("Games can only be started in group chats!")
         return
 
-    active_game = context.bot_data.get(update.message.chat_id)
+    active_game: ActiveGame | None = context.bot_data.get(update.message.chat_id)
     if active_game is None:
         await update.message.reply_text("First create a game with /new!")
         return
@@ -174,7 +178,7 @@ Commands:
     )
 
     has_started = False
-    active_game = (status_message.id, joined_players, has_started)
+    active_game: ActiveGame = (status_message.id, joined_players, has_started)
     context.bot_data[update.message.chat_id] = active_game
     context.bot_data[update.message.from_user.id] = update.message.chat_id
 
@@ -194,7 +198,7 @@ async def join_game(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("This command is only usable in group chats!")
         return
 
-    active_game = context.bot_data.get(update.message.chat_id)
+    active_game: ActiveGame | None = context.bot_data.get(update.message.chat_id)
     if active_game is None:
         await update.message.reply_text("First create a game with /new!")
         return
@@ -250,4 +254,4 @@ def main() -> None:
     app.add_handler(CommandHandler("join", join_game))
     app.add_handler(MessageHandler(None, tick))
 
-    app.run_polling() # todo: shorten polling time
+    app.run_polling()  # todo: shorten polling time
