@@ -1,6 +1,9 @@
 import logging
 from pathlib import Path
+from shutil import rmtree
+from typing import Dict, List, Tuple, TypedDict
 
+from PIL import Image
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -21,6 +24,33 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+class Slot(TypedDict):
+    position: Tuple[int, int]
+    size: Tuple[int, int]
+    prompts: List[str]
+
+
+class ImageTemplate(TypedDict):
+    file_name: str
+    size: Tuple[int, int]
+    slots: List[Slot]
+
+
+templates: Dict[str, ImageTemplate] = {
+    "blank": {
+        "file_name": "blank.webp",
+        "size": (1024, 512),
+        "slots": [
+            {
+                "position": (256, 128),
+                "size": (256, 256),
+                "prompts": ["sticker"],
+            }
+        ],
+    }
+}
+
+
 async def save_sticker_to_file(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
@@ -39,11 +69,28 @@ async def save_sticker_to_file(
     file_name = f"{sticker_file.file_id}.{file_extension}"
     logger.info(file_name)
 
-    sticker_dir = Path("tmp/stickers")
-    sticker_dir.mkdir(parents=True, exist_ok=True)
-    await sticker_file.download_to_drive(sticker_dir / file_name)
+    tmp_dir = Path("tmp") / str(update.message.chat.id)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    sticker_path = tmp_dir / file_name
+    await sticker_file.download_to_drive(sticker_path)
 
-    await update.message.reply_sticker(sticker=sticker)
+    template = templates["blank"]
+    template_dir = Path("image_templates")
+    blank_template = template_dir / template["file_name"]
+    slot = template["slots"][0]
+
+    template_image = Image.open(blank_template)
+    img_to_insert = Image.open(sticker_path).resize(slot["size"])
+    template_image.paste(img_to_insert, slot["position"])
+
+    combined_file_name = tmp_dir / "combined.webp"
+    template_image.save(combined_file_name)
+
+    with open(combined_file_name, "rb") as combined_file_name:
+        await update.message.reply_document(document=combined_file_name)
+
+    # clean up tmp files
+    rmtree(tmp_dir)
 
 
 async def hello_world(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
