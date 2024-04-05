@@ -6,10 +6,11 @@ authors = ["Mikael Siidorow <mikael.siidorow@aalto.fi>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "3.11.3"
 python-telegram-bot = "^21.0.1"
 pydantic = "^2.6.4"
 pydantic-settings = "^2.2.1"
+openai = "^1.16.2"
 pillow = "^10.3.0"
 
 [tool.poetry.group.dev.dependencies]
