@@ -27,6 +27,16 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+async def start_handler(update: Update, context: GameStateContext) -> None:
+    if not update.message:
+        logger.error("No message in update", update, context)
+        return
+
+    await update.message.reply_text(
+        "Start playing by inviting the bot to a group and running a new game with /new!\n\nRespond to prompts by sending images or stickers directly!"
+    )
+
+
 async def warning_handler(update: Update, context: GameStateContext) -> None:
     if not update.message:
         logger.error("No message in update", update, context)
@@ -138,9 +148,10 @@ def main() -> None:
         .build()
     )
 
+    app.add_handler(CommandHandler("start", start_handler, filters.ChatType.PRIVATE))
     app.add_handler(
         CommandHandler(
-            ["new", "start", "join"], warning_handler, ~filters.ChatType.SUPERGROUP
+            ["start", "new", "join"], warning_handler, ~filters.ChatType.SUPERGROUP
         )
     )
     app.add_handler(
