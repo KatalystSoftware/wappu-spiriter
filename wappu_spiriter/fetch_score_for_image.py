@@ -14,38 +14,40 @@ How many points does this image get? End your answer with the "Total points: X" 
 0, 1 or 2 points from vappu-related stuff
 """
 
-def pil_image_to_base64_string(image: Image) -> str:
-  buffered = BytesIO()
-  image.save(buffered, format="JPEG")
-  return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+def pil_image_to_base64_string(image: Image.Image) -> str:
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
 
 def fetch_score_for_image(base64_string: str) -> int:
-  print("Calling OPENAI API")
+    print("Calling OPENAI API")
 
-  response = client.chat.completions.create(
-    model="gpt-4-vision-preview",
-    messages=[
-      {
-        "role": "user",
-        "content": [
-          {"type": "text", "text": prompt},
-          {
-            "type": "image_url",
-            "image_url": {
-              "url": f"data:image/jpeg;base64,{base64_string}"
-            },
-          },
+    response = client.chat.completions.create(
+        model="gpt-4-vision-preview",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_string}"},
+                    },
+                ],
+            }
         ],
-      }
-    ],
-    max_tokens=500,
-  )
+        max_tokens=500,
+    )
 
-  response_text = response.choices[0].message.content
+    response_text = response.choices[0].message.content
 
-  # strip the "Total points: " part
-  score = int(response_text.split("Total points: ")[1])
+    assert response_text is not None
 
-  print("GPT response: ", response_text)
-  print("Extracted score: ", score)
-  return score
+    # strip the "Total points: " part
+    score = int(response_text.split("Total points: ")[1])
+
+    print("GPT response: ", response_text)
+    print("Extracted score: ", score)
+    return score
