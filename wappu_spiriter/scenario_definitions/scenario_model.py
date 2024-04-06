@@ -1,5 +1,5 @@
-from copy import deepcopy
 import random
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import List, Tuple, TypedDict
 
@@ -120,5 +120,5 @@ scenario_definitions = [
                 "prompts": ["an item", "a drink", "an animal"],
             },
         ],
-    )
+    ),
 ]

@@ -100,7 +100,7 @@ Commands:
         for player in self.players:
             await bot.send_message(
                 player.id,
-                f"Game finished\\! [View results \\-\\>](https://t.me/c/{str(self.initalization_chat_id)[3:]}/{result_msg.id})",  # todo: substringing like that doesn't work in public groups
+                f"Round finished\\! [View results \\-\\>](https://t.me/c/{str(self.initalization_chat_id)[3:]}/{result_msg.id})",  # todo: substringing like that doesn't work in public groups
                 parse_mode=constants.ParseMode.MARKDOWN_V2,
             )
 
@@ -116,13 +116,33 @@ Commands:
 
         await bot.send_message(
             self.initalization_chat_id,
-            f"All submissions revealed!",
+            "All submissions revealed!",
         )
 
-        # todo: self.next_round()
+        await self.next_round(bot)
 
-    async def next_round(self):
-        pass  # todo
+    async def next_round(self, bot: ExtBot):
+        self.current_scenario_index += 1
+
+        if self.current_scenario_index >= len(self.scenarios):
+            await bot.send_message(
+                self.initalization_chat_id,
+                "Game is complete! Start a new game with /new",
+            )
+            return
+
+        for player in self.players:
+            player.slots = []
+
+        for team in self.teams:
+            team.scenario = self.scenarios[self.current_scenario_index].clone()
+            await self.assign_initial_prompts_to_team(team, bot)
+
+        await bot.send_message(
+            self.initalization_chat_id,
+            f"Next round started\\!\n\n[Play game](https://t.me/{bot.username})",
+            parse_mode=constants.ParseMode.MARKDOWN_V2,
+        )
 
     async def submit_image(
         self, user_id: int, image: Image, message: Message, bot: ExtBot
@@ -156,11 +176,16 @@ Commands:
         return False
 
     def populate_scenarios(self):
-        scenario_definitions_shuffled = scenario_definitions.copy()
-        random.shuffle(scenario_definitions_shuffled)
+        # scenario_definitions_shuffled = scenario_definitions.copy()
+        # random.shuffle(scenario_definitions_shuffled)
+        # self.scenarios = [
+        #     Scenario(scenario_definition)
+        #     for scenario_definition in scenario_definitions_shuffled
+        # ]
         self.scenarios = [
-            Scenario(scenario_definition)
-            for scenario_definition in scenario_definitions_shuffled
+            Scenario(scenario_definitions.copy()[0], instruction_set_index=0),
+            Scenario(scenario_definitions.copy()[0], instruction_set_index=1),
+            Scenario(scenario_definitions.copy()[0], instruction_set_index=2),
         ]
 
     async def start_game(self, bot: ExtBot):
@@ -168,16 +193,18 @@ Commands:
         assert self.initalization_msg is not None
 
         self.populate_scenarios()
+        self.current_scenario_index = 0
 
         # make single player teams
         self.teams = [
-            Team(players=[Player(id=i)], scenario=self.scenarios[0].clone())
+            Team(
+                players=[Player(id=i)],
+                scenario=self.scenarios[self.current_scenario_index].clone(),
+            )
             for i in self.player_id_set
         ]
 
         self.game_status = "ACTIVE"
-
-        self.current_scenario_index = 0
 
         await bot.edit_message_text(
             f"""New game created\\!
@@ -193,12 +220,15 @@ Commands:
         )
 
         for team in self.teams:
-            slots = team.scenario.slots
-            random.shuffle(slots)
-            for slot, player in zip(slots, itertools.cycle(team.players)):
-                if len(player.slots) == 0:
-                    await self.send_instruction(bot, player.id, slot.prompt)
-                player.slots += [slot]
+            await self.assign_initial_prompts_to_team(team, bot)
+
+    async def assign_initial_prompts_to_team(self, team: Team, bot: ExtBot):
+        slots = team.scenario.slots
+        random.shuffle(slots)
+        for slot, player in zip(slots, itertools.cycle(team.players)):
+            if len(player.slots) == 0:
+                await self.send_instruction(bot, player.id, slot.prompt)
+            player.slots += [slot]
 
     async def play_round(self, round_id: int):
         pass
