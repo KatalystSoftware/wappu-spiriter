@@ -1,3 +1,4 @@
+import asyncio
 import itertools
 import random
 from dataclasses import dataclass, field
@@ -8,6 +9,7 @@ from PIL.Image import Image
 from telegram import Message, constants
 from telegram.ext import ExtBot
 
+from wappu_spiriter.image_related.utils import pil_image_to_bytes
 from wappu_spiriter.scenario_definitions.scenario_model import (
     Scenario,
     Slot,
@@ -21,13 +23,19 @@ class Player:
     slots: List[Slot] = field(default_factory=list)
 
 
+@dataclass
+class Team:
+    players: List[Player]
+    scenario: Scenario
+
+
 class Game:
     id: str
     initalization_chat_id: int
     initalization_msg: Message | None
-    player_set: set[int] = set()
+    player_id_set: set[int] = set()
     game_status: Literal["PREP"] | Literal["ACTIVE"] | Literal["FINISHED"] = "PREP"
-    teams: List[List[Player]]
+    teams: List[Team]
     scenarios: List[Scenario]
     current_scenario_index: int = 0
     rounds: int = 3
@@ -38,18 +46,18 @@ class Game:
         self = cls()
         self.initalization_chat_id = init_call_msg.chat_id
         self.id = str(random.randint(0, 1000000))
-        self.player_set = set([init_call_msg.from_user.id])
+        self.player_id_set = set([init_call_msg.from_user.id])
         await self.send_initialization_msg(init_call_msg)
 
         return self
 
     @property
     def player_count(self) -> int:
-        return len(self.player_set)
+        return len(self.player_id_set)
 
     @property
     def players(self) -> List[Player]:
-        return list(flatten(self.teams))
+        return list(flatten([team.players for team in self.teams]))
 
     @property
     def current_scenario(self) -> Scenario:
@@ -87,6 +95,35 @@ Commands:
         )
         return first_empty_slot
 
+    async def finish_round(self, bot: ExtBot):
+        result_msg = await bot.send_message(self.initalization_chat_id, "Done!")
+        for player in self.players:
+            await bot.send_message(
+                player.id,
+                f"Game finished\\! [View results \\-\\>](https://t.me/c/{str(self.initalization_chat_id)[3:]}/{result_msg.id})",  # todo: substringing like that doesn't work in public groups
+                parse_mode=constants.ParseMode.MARKDOWN_V2,
+            )
+
+        for i, team in enumerate(self.teams):
+            image = team.scenario.compose_image()
+            image_bytes = pil_image_to_bytes(image)
+            await bot.send_photo(
+                self.initalization_chat_id,
+                image_bytes,
+                f"Submission from team {i} (continuing in 5s...)",
+            )
+            await asyncio.sleep(5)
+
+        await bot.send_message(
+            self.initalization_chat_id,
+            f"All submissions revealed!",
+        )
+
+        # todo: self.next_round()
+
+    async def next_round(self):
+        pass  # todo
+
     async def submit_image(
         self, user_id: int, image: Image, message: Message, bot: ExtBot
     ):
@@ -104,13 +141,7 @@ Commands:
             await message.reply_text(done_msg)
 
         if self.empty_slots == 0:
-            result_msg = await bot.send_message(self.initalization_chat_id, "Done!")
-            for player in self.players:
-                await bot.send_message(
-                    player.id,
-                    f"Game finished\\! [View results \\-\\>](https://t.me/c/{str(self.initalization_chat_id)[3:]}/{result_msg.id})",
-                    parse_mode=constants.ParseMode.MARKDOWN_V2,
-                )
+            await self.finish_round(bot)
 
     async def send_instruction(self, bot: ExtBot, user_id: int, prompt: str) -> None:
         await bot.send_message(user_id, prompt)
@@ -139,7 +170,10 @@ Commands:
         self.populate_scenarios()
 
         # make single player teams
-        self.teams = [[Player(id=i)] for i in self.player_set]
+        self.teams = [
+            Team(players=[Player(id=i)], scenario=self.scenarios[0].clone())
+            for i in self.player_id_set
+        ]
 
         self.game_status = "ACTIVE"
 
@@ -159,9 +193,9 @@ Commands:
         )
 
         for team in self.teams:
-            slots = self.current_scenario.slots.copy()
+            slots = team.scenario.slots
             random.shuffle(slots)
-            for slot, player in zip(slots, itertools.cycle(team)):
+            for slot, player in zip(slots, itertools.cycle(team.players)):
                 if len(player.slots) == 0:
                     await self.send_instruction(bot, player.id, slot.prompt)
                 player.slots += [slot]
@@ -185,10 +219,10 @@ Commands:
 
             return Exception(msg)
 
-        if join_call_msg.from_user.id in self.player_set:
+        if join_call_msg.from_user.id in self.player_id_set:
             return Exception("Player already in game")
 
-        self.player_set.add(join_call_msg.from_user.id)
+        self.player_id_set.add(join_call_msg.from_user.id)
 
         await bot.edit_message_text(
             f"""New game created!

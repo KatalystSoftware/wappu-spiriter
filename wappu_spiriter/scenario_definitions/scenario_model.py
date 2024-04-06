@@ -1,8 +1,11 @@
+from copy import deepcopy
 import random
 from dataclasses import dataclass
 from typing import List, Tuple, TypedDict
 
-from PIL.Image import Image
+from PIL import Image
+
+from wappu_spiriter.image_related.manipulate_img import overlay_pil_image_on_base_image
 
 
 class SlotDefinition(TypedDict):
@@ -16,7 +19,7 @@ class Slot:
     position: Tuple[int, int]
     size: Tuple[int, int]
     prompt: str
-    submitted_image: Image | None = None
+    submitted_image: Image.Image | None = None
 
 
 @dataclass
@@ -42,8 +45,6 @@ class ScenarioDefinition:
 
 
 class Scenario:
-    instruction_set_index: int
-
     def __init__(
         self,
         scenario_definition: ScenarioDefinition,
@@ -56,24 +57,43 @@ class Scenario:
                 scenario_definition.get_random_instruction_set_index()
             )
 
-        self.instruction_set_index = instruction_set_index
-
-    @property
-    def slots(self) -> List[Slot]:
-        return [
+        self.slots = [
             Slot(
                 position=slot_opts["position"],
                 size=slot_opts["size"],
-                prompt=slot_opts["prompts"][self.instruction_set_index],
+                prompt=slot_opts["prompts"][instruction_set_index],
             )
             for slot_opts in self.scenario_definition.slot_list
         ]
+
+    def all_slots_filled(self):
+        return all(slot.submitted_image is not None for slot in self.slots)
+
+    def compose_image(self):
+        assert self.all_slots_filled()
+
+        image = Image.open(self.scenario_definition.base_img_path)
+        for slot in self.slots:
+            assert slot.submitted_image is not None
+            image = overlay_pil_image_on_base_image(
+                image,
+                slot.submitted_image,
+                (
+                    slot.position,
+                    (slot.position[0] + slot.size[0], slot.position[1] + slot.size[1]),
+                ),
+            )
+
+        return image
+
+    def clone(self):
+        return deepcopy(self)
 
 
 scenario_definitions = [
     ScenarioDefinition(
         name="park",
-        base_img_path="IMG_1240.PNG",
+        base_img_path="image_templates/IMG_1240.PNG",
         base_img_dimensions=(3508, 2480),
         slot_list=[
             {

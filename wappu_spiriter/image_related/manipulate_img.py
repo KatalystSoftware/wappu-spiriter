@@ -3,7 +3,7 @@ from typing import Tuple
 from PIL import Image
 
 
-async def overlay_pil_image_on_base_image(
+def overlay_pil_image_on_base_image(
     base_image: Image.Image,
     overlay_image: Image.Image,
     target_coordinates: Tuple[Tuple[int, int], Tuple[int, int]],
