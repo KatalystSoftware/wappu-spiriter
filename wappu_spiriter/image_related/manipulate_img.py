@@ -15,5 +15,7 @@ def overlay_pil_image_on_base_image(
         )
     )
     copied_base_image = base_image.copy()
-    copied_base_image.paste(scaled_overlay, target_coordinates[0])
+    copied_base_image.paste(
+        scaled_overlay, target_coordinates[0], scaled_overlay.convert("RGBA")
+    )
     return copied_base_image
