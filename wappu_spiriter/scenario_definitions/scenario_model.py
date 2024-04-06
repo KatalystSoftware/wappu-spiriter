@@ -92,6 +92,49 @@ class Scenario:
 
 scenario_definitions = [
     ScenarioDefinition(
+        name="grill",
+        base_img_path="image_templates/IMG_7612.PNG",
+        base_img_dimensions=(3508, 2480),
+        slot_list=[
+            {
+                "position": (666, 140),
+                "size": (222, 222),
+                "prompts": [
+                    "a wappu balloon flying in the wind",
+                    "an animal on a leash",
+                    "a child who lost their parents",
+                ],
+            },
+            {
+                "position": (1443, 333),
+                "size": (555, 444),
+                "prompts": [
+                    "a person grilling some tasty meals",
+                    "a very serious guard staring at a prisoner",
+                    "an animal standing very firmly",
+                ],
+            },
+            {
+                "position": (2553, 333),
+                "size": (555, 666),
+                "prompts": [
+                    "a person who lost their air balloon and are chasing it",
+                    "a person trying to swat a fly",
+                    "one of your favourite drinks ",
+                ],
+            },
+            {
+                "position": (1665, 1665),
+                "size": (1554, 666),
+                "prompts": [
+                    "a tired person sleeping on the grass",
+                    "a person that is not feeling so good",
+                    "an inspirational quote",
+                ],
+            },
+        ],
+    ),
+    ScenarioDefinition(
         name="park",
         base_img_path="image_templates/IMG_1240.PNG",
         base_img_dimensions=(3508, 2480),
