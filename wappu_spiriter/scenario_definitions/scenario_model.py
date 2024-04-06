@@ -2,6 +2,8 @@ import random
 from dataclasses import dataclass
 from typing import List, Tuple, TypedDict
 
+from PIL.Image import Image
+
 
 class SlotDefinition(TypedDict):
     position: Tuple[int, int]
@@ -9,10 +11,12 @@ class SlotDefinition(TypedDict):
     prompts: List[str]
 
 
-class Slot(TypedDict):
+@dataclass
+class Slot:
     position: Tuple[int, int]
     size: Tuple[int, int]
     prompt: str
+    submitted_image: Image | None = None
 
 
 @dataclass
@@ -57,26 +61,44 @@ class Scenario:
     @property
     def slots(self) -> List[Slot]:
         return [
-            {
-                "position": slot_opts["position"],
-                "size": slot_opts["size"],
-                "prompt": slot_opts["prompts"][self.instruction_set_index],
-            }
+            Slot(
+                position=slot_opts["position"],
+                size=slot_opts["size"],
+                prompt=slot_opts["prompts"][self.instruction_set_index],
+            )
             for slot_opts in self.scenario_definition.slot_list
         ]
 
 
 scenario_definitions = [
     ScenarioDefinition(
-        name="blank",
-        base_img_path="blank.webp",
-        base_img_dimensions=(1024, 512),
+        name="park",
+        base_img_path="IMG_1240.PNG",
+        base_img_dimensions=(3508, 2480),
         slot_list=[
             {
-                "position": (256, 128),
-                "size": (256, 256),
-                "prompts": ["sticker"],
-            }
+                "position": (2239, 2),
+                "size": (530, 561),
+                "prompts": [
+                    "someone hanging",
+                    "an animal climbing something",
+                    "a poster",
+                ],
+            },
+            {
+                "position": (900, 1700),
+                "size": (600, 600),
+                "prompts": [
+                    "a person laying down",
+                    "a person sittin",
+                    "a person angry",
+                ],
+            },
+            {
+                "position": (2050, 2000),
+                "size": (200, 200),
+                "prompts": ["an item", "a drink", "an animal"],
+            },
         ],
     )
 ]

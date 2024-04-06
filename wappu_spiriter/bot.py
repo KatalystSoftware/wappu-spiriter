@@ -31,23 +31,36 @@ async def user_submission_handler(update: Update, context: GameStateContext) -> 
     if not update.message or not update.message.from_user:
         logger.error("No message in update", update, context)
         return
-
-    game_in_chat: Game | None = context.bot_data.get_game_by_userid(
-        update.message.from_user.id
-    )
-    if game_in_chat is None:
+    user_id = update.message.from_user.id
+    game: Game | None = context.bot_data.get_game_by_userid(user_id)
+    if game is None:
         await update.message.reply_text(
             "You have not joined a game yet! Create a new game in a chat with /new or join an existing one with /join"
         )
         return
 
-    if update.message and update.message.sticker:
+    pil_image = None
+    if update.message.sticker:
         pil_image = await get_sticker_pil_image_from_message(update, context)
-        # print("Got sticker", show_pil_image(pil_image))
-
-    if update.message and update.message.photo:
+    if update.message.photo:
         pil_image = await get_picture_pil_image_from_message(update, context)
-        # print("Got photo", show_pil_image(pil_image))
+
+    if pil_image is None:
+        await update.message.reply_text("Error extracting image from message!")
+        return
+
+    next_slot = game.get_active_slot_by_user_id(user_id)
+
+    done_msg = "You are finished for the round, wait for others!"
+    if not next_slot:
+        await update.message.reply_text(done_msg)
+        return
+
+    next_slot.submitted_image = pil_image
+    is_instruction_sent = await game.send_next_instruction(context.bot, user_id)
+
+    if not is_instruction_sent:
+        await update.message.reply_text(done_msg)
 
 
 async def start_game_handler(update: Update, context: GameStateContext) -> None:
