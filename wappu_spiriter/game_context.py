@@ -43,3 +43,8 @@ class GameStateContext(CallbackContext[ExtBot, dict, dict, BotState]):
     ):
         super().__init__(application=application, chat_id=chat_id, user_id=user_id)
         self._message_id: Optional[int] = None
+
+    async def is_bot_is_admin_in_chat(self, chat_id: int) -> bool:
+        return self.bot.id in [
+            admin.user.id for admin in await self.bot.get_chat_administrators(chat_id)
+        ]

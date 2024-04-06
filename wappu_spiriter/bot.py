@@ -27,6 +27,20 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+async def warning_handler(update: Update, context: GameStateContext) -> None:
+    if not update.message:
+        logger.error("No message in update", update, context)
+        return
+
+    if update.message.chat.type == constants.ChatType.GROUP:
+        await update.message.reply_text(
+            "This command is only usable in supergroup chats! Convert your chat to a supergroup to use this command (for example by giving me an admin title of 'Wappu Spirit')."
+        )
+        return
+
+    await update.message.reply_text("This command is only usable in chats!")
+
+
 async def user_submission_handler(update: Update, context: GameStateContext) -> None:
     if not update.message or not update.message.from_user:
         logger.error("No message in update", update, context)
@@ -49,32 +63,12 @@ async def user_submission_handler(update: Update, context: GameStateContext) -> 
         await update.message.reply_text("Error extracting image from message!")
         return
 
-    next_slot = game.get_active_slot_by_user_id(user_id)
-
-    done_msg = "You are finished for the round, wait for others!"
-    if not next_slot:
-        await update.message.reply_text(done_msg)
-        return
-
-    next_slot.submitted_image = pil_image
-    is_instruction_sent = await game.send_next_instruction(context.bot, user_id)
-
-    if not is_instruction_sent:
-        await update.message.reply_text(done_msg)
+    await game.submit_image(user_id, pil_image, update.message, context.bot)
 
 
 async def start_game_handler(update: Update, context: GameStateContext) -> None:
     if not update.message:
         logger.error("No message in update", update, context)
-        return
-
-    if (
-        update.message.chat.type != constants.ChatType.GROUP
-        and update.message.chat.type != constants.ChatType.SUPERGROUP
-    ):
-        await update.message.reply_text(
-            "Games can only be started in group chats! Create a new game in a chat with /new"
-        )
         return
 
     game: Game | None = context.bot_data.get_game_by_groupchat_id(
@@ -92,18 +86,11 @@ async def new_game_handler(update: Update, context: GameStateContext) -> None:
         logger.error("No message or user in update", update, context)
         return
 
-    if (
-        update.message.chat.type != constants.ChatType.GROUP
-        and update.message.chat.type != constants.ChatType.SUPERGROUP
-    ):
-        await update.message.reply_text("This command is only usable in group chats!")
-        return
-
     if context.bot_data.exists_active_game_in_groupchat(update.message.chat_id):
         await update.message.reply_text("Game already exists in this chat!")
         return
 
-    game = await Game.new(update.message, context.bot)
+    game = await Game.new(update.message)
     context.bot_data.games[game.id] = game
     context.bot_data.groupchat_id_to_game[update.message.chat_id] = game.id
     context.bot_data.user_id_to_game[update.message.from_user.id] = game.id
@@ -121,13 +108,6 @@ async def join_game_handler(update: Update, context: GameStateContext) -> None:
         logger.error("No message or user in update", update, context)
         return
 
-    if (
-        update.message.chat.type != constants.ChatType.GROUP
-        and update.message.chat.type != constants.ChatType.SUPERGROUP
-    ):
-        await update.message.reply_text("This command is only usable in group chats!")
-        return
-
     game: Game | None = context.bot_data.get_game_by_groupchat_id(
         update.message.chat_id
     )
@@ -135,7 +115,11 @@ async def join_game_handler(update: Update, context: GameStateContext) -> None:
         await update.message.reply_text("First create a game with /new!")
         return
 
-    game_joining_error = await game.join_game(update.message, context.bot)
+    game_joining_error = await game.join_game(
+        update.message,
+        context.bot,
+        await context.is_bot_is_admin_in_chat(update.message.chat_id),
+    )
 
     if game_joining_error is None:
         context.bot_data.user_id_to_game[update.message.from_user.id] = game.id
@@ -154,9 +138,20 @@ def main() -> None:
         .build()
     )
 
-    app.add_handler(CommandHandler("new", new_game_handler))
-    app.add_handler(CommandHandler("start", start_game_handler))
-    app.add_handler(CommandHandler("join", join_game_handler))
+    app.add_handler(
+        CommandHandler(
+            ["new", "start", "join"], warning_handler, ~filters.ChatType.SUPERGROUP
+        )
+    )
+    app.add_handler(
+        CommandHandler("new", new_game_handler, filters=filters.ChatType.SUPERGROUP)
+    )
+    app.add_handler(
+        CommandHandler("start", start_game_handler, filters=filters.ChatType.SUPERGROUP)
+    )
+    app.add_handler(
+        CommandHandler("join", join_game_handler, filters=filters.ChatType.SUPERGROUP)
+    )
     app.add_handler(
         MessageHandler(filters.Sticker.STATIC | filters.PHOTO, user_submission_handler)
     )

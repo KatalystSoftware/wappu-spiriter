@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import List, Literal, Self
 
 from more_itertools import first_true, flatten
+from PIL.Image import Image
 from telegram import Message, constants
 from telegram.ext import ExtBot
 
@@ -22,9 +23,9 @@ class Player:
 
 class Game:
     id: str
-    initalization_chat_id: int | None = None
+    initalization_chat_id: int
+    initalization_msg: Message | None
     player_set: set[int] = set()
-    bot_is_admin: bool | None = None
     game_status: Literal["PREP"] | Literal["ACTIVE"] | Literal["FINISHED"] = "PREP"
     teams: List[List[Player]]
     scenarios: List[Scenario]
@@ -32,15 +33,12 @@ class Game:
     rounds: int = 3
 
     @classmethod
-    async def new(cls, init_call_msg: Message, bot: ExtBot) -> Self:
+    async def new(cls, init_call_msg: Message) -> Self:
         assert init_call_msg.from_user is not None
         self = cls()
+        self.initalization_chat_id = init_call_msg.chat_id
         self.id = str(random.randint(0, 1000000))
         self.player_set = set([init_call_msg.from_user.id])
-        self.bot_is_admin = bot.id in [
-            admin.user.id for admin in await init_call_msg.chat.get_administrators()
-        ]
-
         await self.send_initialization_msg(init_call_msg)
 
         return self
@@ -50,9 +48,20 @@ class Game:
         return len(self.player_set)
 
     @property
+    def players(self) -> List[Player]:
+        return list(flatten(self.teams))
+
+    @property
     def current_scenario(self) -> Scenario:
         assert self.current_scenario_index < len(self.scenarios)
         return self.scenarios[self.current_scenario_index]
+
+    @property
+    def empty_slots(self) -> int:
+        slots = flatten([player.slots for player in self.players])
+        empty_slots = list(filter(lambda slot: slot.submitted_image is None, slots))
+
+        return len(empty_slots)
 
     async def send_initialization_msg(self, init_call_msg: Message):
         self.initalization_msg = await init_call_msg.reply_text(
@@ -66,10 +75,9 @@ Commands:
 /join - join game
 /start - start game"""
         )
-        self.initalization_chat_id = init_call_msg.chat_id
 
     def get_active_slot_by_user_id(self, user_id: int) -> Slot | None:
-        all_players = flatten(self.teams)
+        all_players = self.players
         player = first_true(all_players, None, lambda p: p.id == user_id)
         if not player:
             return None
@@ -78,6 +86,31 @@ Commands:
             player.slots, None, lambda slot: slot.submitted_image is None
         )
         return first_empty_slot
+
+    async def submit_image(
+        self, user_id: int, image: Image, message: Message, bot: ExtBot
+    ):
+        next_slot = self.get_active_slot_by_user_id(user_id)
+
+        done_msg = "You are finished for the round, wait for others!"
+        if not next_slot:
+            await message.reply_text(done_msg)
+            return
+
+        next_slot.submitted_image = image
+        is_instruction_sent = await self.send_next_instruction(bot, user_id)
+
+        if not is_instruction_sent:
+            await message.reply_text(done_msg)
+
+        if self.empty_slots == 0:
+            result_msg = await bot.send_message(self.initalization_chat_id, "Done!")
+            for player in self.players:
+                await bot.send_message(
+                    player.id,
+                    f"Game finished\\! [View results \\-\\>](https://t.me/c/{str(self.initalization_chat_id)[3:]}/{result_msg.id})",
+                    parse_mode=constants.ParseMode.MARKDOWN_V2,
+                )
 
     async def send_instruction(self, bot: ExtBot, user_id: int, prompt: str) -> None:
         await bot.send_message(user_id, prompt)
@@ -101,6 +134,7 @@ Commands:
 
     async def start_game(self, bot: ExtBot):
         assert self.game_status == "PREP"
+        assert self.initalization_msg is not None
 
         self.populate_scenarios()
 
@@ -136,10 +170,13 @@ Commands:
         pass
 
     # return exception object if non-terminal error
-    async def join_game(self, join_call_msg: Message, bot: ExtBot) -> Exception | None:
+    async def join_game(
+        self, join_call_msg: Message, bot: ExtBot, is_admin: bool
+    ) -> Exception | None:
         assert join_call_msg.from_user is not None
+        assert self.initalization_msg is not None
 
-        if self.bot_is_admin:
+        if is_admin:
             await join_call_msg.delete()
 
         if self.game_status != "PREP":
