@@ -195,14 +195,54 @@ Commands:
         self.populate_scenarios()
         self.current_scenario_index = 0
 
-        # make single player teams
-        self.teams = [
-            Team(
-                players=[Player(id=i)],
-                scenario=self.scenarios[self.current_scenario_index].clone(),
-            )
-            for i in self.player_id_set
-        ]
+        # todo: change to 4 for max slot count??
+        max_team_size = 3
+
+        # team logic
+        # 1 => 1
+        # 2 => 1 + 1
+        # 3 => 1 + 1 + 1
+
+        # 4 => 2 + 2
+        # 5 => 3 + 2
+        # 6 => 2 + 2 + 2
+        # 7 => 3 + 2 + 2
+        # 8 => 2 + 2 + 2 + 2
+        # 9 => 3 + 2 + 2 + 2
+        # 10 => 2 + 2 + 2 + 2 + 2
+
+        # split into teams
+        if len(self.player_id_set) <= max_team_size:
+            # single player teams
+            self.teams = [
+                Team(
+                    players=[Player(id=i)],
+                    scenario=self.scenarios[self.current_scenario_index].clone(),
+                )
+                for i in self.player_id_set
+            ]
+        else:
+            # pairs of 2 or leftover fills a 3 group
+            self.teams = []
+
+            player_pool = list(self.player_id_set.copy())
+            random.shuffle(player_pool)
+
+            team_count = len(player_pool) // 2
+            for _ in range(team_count):
+                team_players = [
+                    Player(id=player_pool.pop()),
+                    Player(id=player_pool.pop()),
+                ]
+                self.teams += [
+                    Team(
+                        players=team_players,
+                        scenario=self.scenarios[self.current_scenario_index].clone(),
+                    ),
+                ]
+
+            if len(player_pool) > 0:
+                self.teams[0].players += [Player(id=player_pool.pop())]
 
         self.game_status = "ACTIVE"
 
