@@ -84,11 +84,12 @@ class Scenario:
                     (slot.position[0] + slot.size[0], slot.position[1] + slot.size[1]),
                 ),
             )
-        image = overlay_pil_image_on_base_image(
-            image,
-            Image.open(self.scenario_definition.foreground_img_path),
-            ((0, 0), self.scenario_definition.base_img_dimensions),
-        )
+        if self.scenario_definition.foreground_img_path:
+            image = overlay_pil_image_on_base_image(
+                image,
+                Image.open(self.scenario_definition.foreground_img_path),
+                ((0, 0), self.scenario_definition.base_img_dimensions),
+            )
 
         return image
 
@@ -126,7 +127,7 @@ jail_scenario = ScenarioDefinition(
 )
 
 ullis_grilling_scenario = ScenarioDefinition(
-    name="grill",
+    name="A traditional Ullis sillis",
     background_img_path="image_templates/IMG_7612.PNG",
     base_img_dimensions=(3508, 2480),
     slot_list=[
@@ -171,7 +172,7 @@ ullis_grilling_scenario = ScenarioDefinition(
 
 
 ullis_tree_scenario = ScenarioDefinition(
-    name="park",
+    name="Picnic under a tree at Kaivopuisto",
     background_img_path="image_templates/IMG_1240.PNG",
     base_img_dimensions=(3508, 2480),
     slot_list=[
