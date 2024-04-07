@@ -353,7 +353,11 @@ class Game:
         random.shuffle(slots)
         for slot, player in zip(slots, itertools.cycle(team.players)):
             if len(player.slots) == 0:
-                await self.send_instruction(bot, player.id, slot.prompt)
+                await self.send_instruction(
+                    bot,
+                    player.id,
+                    f'📨 Please send me a sticker or image of\n\n"{slot.prompt}"',
+                )
             player.slots += [slot]
 
     # return exception object if non-terminal error
