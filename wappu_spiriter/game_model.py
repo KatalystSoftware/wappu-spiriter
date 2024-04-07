@@ -158,7 +158,7 @@ Teams:
 [Play game](https://t.me/{self.bot_username})"""
 
             case "FINISHED":
-                return "Game is complete! Start a new game with /new"
+                return "Game is complete\\! Start a new game with /new"
 
     def get_active_slot_by_user_id(self, user_id: int) -> Slot | None:
         all_players = self.players
