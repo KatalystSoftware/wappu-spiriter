@@ -172,7 +172,9 @@ Teams:
         return first_empty_slot
 
     async def finish_round(self, bot: ExtBot):
-        result_msg = await bot.send_message(self.game_chat_id, "Done!")
+        result_msg = await bot.send_message(
+            self.game_chat_id, "Round finished!\n\nHere are the team submissions:"
+        )
         for player in self.players:
             await bot.send_message(
                 player.id,
@@ -186,7 +188,7 @@ Teams:
             photo_message = await bot.send_photo(
                 self.game_chat_id,
                 image_bytes,
-                f"Submission from team {i} (continuing in 5s...)",
+                f'"{self.current_scenario.scenario_definition.name}" by Team {i + 1} (continuing in 5s...)',
             )
             await photo_message.set_reaction("🔥")
             await asyncio.sleep(5)
