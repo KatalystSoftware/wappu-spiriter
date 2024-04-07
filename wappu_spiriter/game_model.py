@@ -183,16 +183,17 @@ Teams:
         for i, team in enumerate(self.teams):
             image = team.scenario.compose_image()
             image_bytes = pil_image_to_bytes(image)
-            await bot.send_photo(
+            photo_message = await bot.send_photo(
                 self.game_chat_id,
                 image_bytes,
                 f"Submission from team {i} (continuing in 5s...)",
             )
+            await photo_message.set_reaction("🔥")
             await asyncio.sleep(5)
 
         await bot.send_message(
             self.game_chat_id,
-            "All submissions revealed!",
+            "All submissions for the round revealed!",
         )
 
         await self.next_round(bot)
