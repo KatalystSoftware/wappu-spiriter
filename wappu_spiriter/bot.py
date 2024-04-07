@@ -28,9 +28,17 @@ logger = logging.getLogger(__name__)
 
 
 async def start_handler(update: Update, context: GameStateContext) -> None:
-    if not update.message:
-        logger.error("No message in update", update, context)
-        return
+    assert update.message is not None
+    assert update.message.from_user is not None
+
+    user_id = update.message.from_user.id
+    game: Game | None = context.bot_data.get_game_by_userid(user_id)
+
+    if game is not None:
+        queued_message = game.queued_message.pop(user_id)
+        if queued_message is not None:
+            await update.message.reply_text(queued_message)
+            return
 
     await update.message.reply_text(
         "Start playing by inviting the bot to a group and running a new game with /new!\n\nRespond to prompts by sending images or stickers directly!"
@@ -38,9 +46,7 @@ async def start_handler(update: Update, context: GameStateContext) -> None:
 
 
 async def warning_handler(update: Update, context: GameStateContext) -> None:
-    if not update.message:
-        logger.error("No message in update", update, context)
-        return
+    assert update.message is not None
 
     if update.message.chat.type == constants.ChatType.GROUP:
         await update.message.reply_text(
@@ -52,9 +58,9 @@ async def warning_handler(update: Update, context: GameStateContext) -> None:
 
 
 async def user_submission_handler(update: Update, context: GameStateContext) -> None:
-    if not update.message or not update.message.from_user:
-        logger.error("No message in update", update, context)
-        return
+    assert update.message is not None
+    assert update.message.from_user is not None
+
     user_id = update.message.from_user.id
     game: Game | None = context.bot_data.get_game_by_userid(user_id)
     if game is None:
@@ -77,9 +83,7 @@ async def user_submission_handler(update: Update, context: GameStateContext) -> 
 
 
 async def start_game_handler(update: Update, context: GameStateContext) -> None:
-    if not update.message:
-        logger.error("No message in update", update, context)
-        return
+    assert update.message is not None
 
     game: Game | None = context.bot_data.get_game_by_groupchat_id(
         update.message.chat_id
@@ -92,9 +96,8 @@ async def start_game_handler(update: Update, context: GameStateContext) -> None:
 
 
 async def new_game_handler(update: Update, context: GameStateContext) -> None:
-    if not update.message or not update.message.from_user:
-        logger.error("No message or user in update", update, context)
-        return
+    assert update.message is not None
+    assert update.message.from_user is not None
 
     if context.bot_data.exists_active_game_in_groupchat(update.message.chat_id):
         await update.message.reply_text("Game already exists in this chat!")
@@ -114,9 +117,8 @@ async def new_game_handler(update: Update, context: GameStateContext) -> None:
 
 
 async def join_game_handler(update: Update, context: GameStateContext) -> None:
-    if not update.message or not update.message.from_user:
-        logger.error("No message or user in update", update, context)
-        return
+    assert update.message is not None
+    assert update.message.from_user is not None
 
     game: Game | None = context.bot_data.get_game_by_groupchat_id(
         update.message.chat_id

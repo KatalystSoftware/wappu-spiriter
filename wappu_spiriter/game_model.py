@@ -6,7 +6,7 @@ from typing import List, Literal, Self
 
 from more_itertools import first_true, flatten
 from PIL.Image import Image
-from telegram import Message, User, constants
+from telegram import Message, User, constants, error
 from telegram.ext import ExtBot
 
 from wappu_spiriter.image_related.utils import pil_image_to_bytes
@@ -67,6 +67,7 @@ class Game:
     scenarios: List[Scenario]
     current_scenario_index: int = 0
     rounds: int = 3
+    queued_message: dict[int, str] = {}
 
     @classmethod
     async def new(cls, init_call_msg: Message, bot: ExtBot) -> Self:
@@ -241,7 +242,14 @@ Teams:
             await self.finish_round(bot)
 
     async def send_instruction(self, bot: ExtBot, user_id: int, prompt: str) -> None:
-        await bot.send_message(user_id, prompt)
+        try:
+            await bot.send_message(user_id, prompt)
+        except error.Forbidden as e:
+            if e.message == "Forbidden: bot can't initiate conversation with a user":
+                self.queued_message[user_id] = prompt
+                return
+
+            raise e
 
     async def send_next_instruction(self, bot: ExtBot, user_id: int) -> bool:
         active_slot = self.get_active_slot_by_user_id(user_id)
