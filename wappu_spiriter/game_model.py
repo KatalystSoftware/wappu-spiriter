@@ -253,16 +253,11 @@ Teams:
         return False
 
     def populate_scenarios(self):
-        # scenario_definitions_shuffled = scenario_definitions.copy()
-        # random.shuffle(scenario_definitions_shuffled)
-        # self.scenarios = [
-        #     Scenario(scenario_definition)
-        #     for scenario_definition in scenario_definitions_shuffled
-        # ]
+        scenario_definitions_shuffled = scenario_definitions.copy()
+        random.shuffle(scenario_definitions_shuffled)
         self.scenarios = [
-            Scenario(scenario_definitions.copy()[0], instruction_set_index=0),
-            # Scenario(scenario_definitions.copy()[0], instruction_set_index=1),
-            # Scenario(scenario_definitions.copy()[0], instruction_set_index=2),
+            Scenario(scenario_definition)
+            for scenario_definition in scenario_definitions_shuffled
         ]
 
     async def start_game(self, bot: ExtBot, message: Message) -> None:
