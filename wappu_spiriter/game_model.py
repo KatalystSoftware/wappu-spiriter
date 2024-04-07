@@ -136,29 +136,29 @@ class Game:
     def status_message(self) -> str:
         match self.game_status:
             case "PREP":
-                return f"""New game created\\!
+                return f"""✨ New game created\\!
         
 ⌛ Waiting for players to /join\\.\\.\\.
 
-Players:
+👥 Players:
 {self.pretty_player_list}
 
 👤 {self.player_count} players joined\\!
 
-Commands:
+🕹️ Commands:
 /join \\- join game
 /start \\- start game \\({get_user_mention(self.game_creator)} only\\)"""
 
             case "ACTIVE":
                 return f"""🖼️ Game started\\!
 
-Teams:
+👥 Teams:
 {self.pretty_team_list}
 
-[Play game](https://t.me/{self.bot_username})"""
+[🖌️ Play game ➡️➡️➡️](https://t.me/{self.bot_username})"""
 
             case "FINISHED":
-                return "Game is complete\\! Start a new game with /new"
+                return "✅ Game is complete\\!\n\n✨ Start a new game with /new"
 
     def get_active_slot_by_user_id(self, user_id: int) -> Slot | None:
         all_players = self.players
@@ -173,12 +173,12 @@ Teams:
 
     async def finish_round(self, bot: ExtBot):
         result_msg = await bot.send_message(
-            self.game_chat_id, "Round finished!\n\nHere are the team submissions:"
+            self.game_chat_id, "✅ Round finished!\n\n✨ Here are the team submissions:"
         )
         for player in self.players:
             await bot.send_message(
                 player.id,
-                f"Round finished\\! [View results \\-\\>](https://t.me/c/{str(self.game_chat_id)[3:]}/{result_msg.id})",  # todo: substringing like that doesn't work in public groups
+                f"✅ Round finished\\!\n\n[✨ View results ➡️➡️➡️](https://t.me/c/{str(self.game_chat_id)[3:]}/{result_msg.id})",  # todo: substringing like that doesn't work in public groups
                 parse_mode=constants.ParseMode.MARKDOWN_V2,
             )
 
@@ -188,14 +188,14 @@ Teams:
             photo_message = await bot.send_photo(
                 self.game_chat_id,
                 image_bytes,
-                f'"{self.current_scenario.scenario_definition.name}" by Team {i + 1} (continuing in 5s...)',
+                f'🖼️ "{self.current_scenario.scenario_definition.name}" by Team {i + 1} (continuing in 5s...)',
             )
             await photo_message.set_reaction("🔥")
             await asyncio.sleep(5)
 
         await bot.send_message(
             self.game_chat_id,
-            "All submissions for the round revealed!",
+            "✅ All submissions for the round revealed!",
         )
 
         await self.next_round(bot)
@@ -221,7 +221,7 @@ Teams:
 
         await bot.send_message(
             self.game_chat_id,
-            f"Next round started\\!\n\n[Play game](https://t.me/{bot.username})",
+            f"✅ Next round started\\!\n\n[🖌️ Play game ➡️➡️➡️](https://t.me/{bot.username})",
             parse_mode=constants.ParseMode.MARKDOWN_V2,
         )
 
@@ -258,7 +258,11 @@ Teams:
         active_slot = self.get_active_slot_by_user_id(user_id)
 
         if active_slot:
-            await self.send_instruction(bot, user_id, active_slot.prompt)
+            await self.send_instruction(
+                bot,
+                user_id,
+                f'📨 Please send me a sticker or image of\n\n"{active_slot.prompt}"',
+            )
             return True
 
         return False
