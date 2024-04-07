@@ -166,7 +166,7 @@ def main() -> None:
         CommandHandler("join", join_game_handler, filters=filters.ChatType.SUPERGROUP)
     )
     app.add_handler(
-        MessageHandler(filters.Sticker.STATIC | filters.PHOTO, user_submission_handler)
+        MessageHandler(filters.Sticker.ALL | filters.PHOTO, user_submission_handler)
     )
 
     app.run_polling()  # todo: shorten polling time
