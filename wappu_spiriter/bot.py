@@ -88,7 +88,7 @@ async def start_game_handler(update: Update, context: GameStateContext) -> None:
     game: Game | None = context.bot_data.get_game_by_groupchat_id(
         update.message.chat_id
     )
-    if game is None:
+    if game is None or game.game_status == "FINISHED":
         await update.message.reply_text("First create a game with /new!")
         return
 
