@@ -126,9 +126,92 @@ jail_scenario = ScenarioDefinition(
     ],
 )
 
+sauna_scenario = ScenarioDefinition(
+    name="A traditional Finnish sauna",
+    background_img_path="image_templates/sauna.png",
+    base_img_dimensions=(3508, 2480),
+    slot_list=[
+        {
+            "position": (666, 333),
+            "size": (222, 333),
+            "prompts": ["a supernatural being"],
+        },
+        {"position": (1110, 777), "size": (333, 444), "prompts": ["a person floating"]},
+        {
+            "position": (1998, 444),
+            "size": (333, 333),
+            "prompts": ["a person sitting down"],
+        },
+        {
+            "position": (2664, 555),
+            "size": (333, 444),
+            "prompts": [
+                "a person sitting down",
+            ],
+        },
+    ],
+)
+
+seagull_scenario = ScenarioDefinition(
+    name="Taking a ride on a seagull",
+    background_img_path="image_templates/seagull.png",
+    base_img_dimensions=(3508, 2480),
+    slot_list=[
+        {
+            "position": (888, 666),
+            "size": (222, 222),
+            "prompts": ["a person hanging on a bar"],
+        },
+        {
+            "position": (2442, 888),
+            "size": (444, 777),
+            "prompts": ["a person standing up"],
+        },
+        {
+            "position": (2997, 888),
+            "size": (333, 777),
+            "prompts": [
+                "a person standing up",
+            ],
+        },
+    ],
+)
+
+psychedelic_scenario = ScenarioDefinition(
+    name="Fever dream",
+    background_img_path="image_templates/psychedelic.png",
+    base_img_dimensions=(3508, 2480),
+    slot_list=[
+        {
+            "position": (777, 777),
+            "size": (444, 888),
+            "prompts": ["a person falling down"],
+        },
+        {
+            "position": (1443, 111),
+            "size": (333, 444),
+            "prompts": ["the king of the hill"],
+        },
+        {
+            "position": (1665, 1887),
+            "size": (222, 222),
+            "prompts": [
+                "a funny face",
+            ],
+        },
+        {
+            "position": (2553, 222),
+            "size": (777, 444),
+            "prompts": [
+                "a flying object",
+            ],
+        },
+    ],
+)
+
 ullis_grilling_scenario = ScenarioDefinition(
     name="A traditional Ullis sillis",
-    background_img_path="image_templates/IMG_7612.PNG",
+    background_img_path="image_templates/grill.png",
     base_img_dimensions=(3508, 2480),
     slot_list=[
         {
@@ -173,7 +256,7 @@ ullis_grilling_scenario = ScenarioDefinition(
 
 ullis_tree_scenario = ScenarioDefinition(
     name="Picnic under a tree at Kaivopuisto",
-    background_img_path="image_templates/IMG_1240.PNG",
+    background_img_path="image_templates/tree.png",
     base_img_dimensions=(3508, 2480),
     slot_list=[
         {
@@ -204,6 +287,9 @@ ullis_tree_scenario = ScenarioDefinition(
 
 scenario_definitions = [
     jail_scenario,
+    sauna_scenario,
+    seagull_scenario,
+    psychedelic_scenario,
     ullis_grilling_scenario,
     ullis_tree_scenario,
 ]
