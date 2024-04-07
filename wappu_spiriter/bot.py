@@ -88,7 +88,7 @@ async def start_game_handler(update: Update, context: GameStateContext) -> None:
         await update.message.reply_text("First create a game with /new!")
         return
 
-    await game.start_game(context.bot)
+    await game.start_game(context.bot, update.message)
 
 
 async def new_game_handler(update: Update, context: GameStateContext) -> None:
@@ -100,7 +100,7 @@ async def new_game_handler(update: Update, context: GameStateContext) -> None:
         await update.message.reply_text("Game already exists in this chat!")
         return
 
-    game = await Game.new(update.message)
+    game = await Game.new(update.message, context.bot)
     context.bot_data.games[game.id] = game
     context.bot_data.groupchat_id_to_game[update.message.chat_id] = game.id
     context.bot_data.user_id_to_game[update.message.from_user.id] = game.id

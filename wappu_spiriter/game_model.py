@@ -6,7 +6,7 @@ from typing import List, Literal, Self
 
 from more_itertools import first_true, flatten
 from PIL.Image import Image
-from telegram import Message, constants
+from telegram import Message, User, constants
 from telegram.ext import ExtBot
 
 from wappu_spiriter.image_related.utils import pil_image_to_bytes
@@ -29,11 +29,39 @@ class Team:
     scenario: Scenario
 
 
+def get_user_display_name(user: User | None) -> str:
+    if user is None:
+        return "Unknown user"
+
+    if user.username is not None:
+        return f"@{user.username}"
+
+    return user.full_name
+
+
+def get_user_mention(user: User | None) -> str:
+    display_name = get_user_display_name(user)
+    if user is None:
+        return display_name
+
+    return f"[{display_name}](tg://user?id={user.id})"
+
+
+def get_mentions_list(users: List[User | None]) -> str:
+    user_mentions = [get_user_mention(player) for player in users]
+    user_mentions.sort()
+
+    return "\n".join(user_mentions)
+
+
 class Game:
     id: str
-    initalization_chat_id: int
+    game_chat_id: int
     initalization_msg: Message | None
-    player_id_set: set[int] = set()
+    bot_username: str
+    game_creator: User
+    player_ids: set[int] = set()
+    player_ids_to_user: dict[int, User] = {}
     game_status: Literal["PREP"] | Literal["ACTIVE"] | Literal["FINISHED"] = "PREP"
     teams: List[Team]
     scenarios: List[Scenario]
@@ -41,19 +69,30 @@ class Game:
     rounds: int = 3
 
     @classmethod
-    async def new(cls, init_call_msg: Message) -> Self:
+    async def new(cls, init_call_msg: Message, bot: ExtBot) -> Self:
         assert init_call_msg.from_user is not None
+
         self = cls()
-        self.initalization_chat_id = init_call_msg.chat_id
+
         self.id = str(random.randint(0, 1000000))
-        self.player_id_set = set([init_call_msg.from_user.id])
-        await self.send_initialization_msg(init_call_msg)
+
+        self.game_chat_id = init_call_msg.chat_id
+        self.player_ids = set([init_call_msg.from_user.id])
+        self.player_ids_to_user[init_call_msg.from_user.id] = init_call_msg.from_user
+
+        self.bot_username = bot.username
+        self.game_creator = init_call_msg.from_user
+
+        self.initalization_msg = await init_call_msg.reply_text(
+            self.status_message,
+            parse_mode=constants.ParseMode.MARKDOWN_V2,
+        )
 
         return self
 
     @property
     def player_count(self) -> int:
-        return len(self.player_id_set)
+        return len(self.player_ids)
 
     @property
     def players(self) -> List[Player]:
@@ -71,18 +110,54 @@ class Game:
 
         return len(empty_slots)
 
-    async def send_initialization_msg(self, init_call_msg: Message):
-        self.initalization_msg = await init_call_msg.reply_text(
-            f"""New game created!
-        
-⌛ Waiting for players to /join...
+    @property
+    def pretty_player_list(self) -> str:
+        player_list = [self.player_ids_to_user.get(pid) for pid in self.player_ids]
+        return get_mentions_list(player_list)
 
-👤 {1} players joined!
+    @property
+    def pretty_team_list(self) -> str:
+        assert len(self.teams) > 0
+
+        output = ""
+
+        for team_number, team in enumerate(self.teams):
+            output += f"Team {team_number + + 1}\n"
+            team_players = [self.player_ids_to_user.get(p.id) for p in team.players]
+            output += get_mentions_list(team_players)
+            output += "\n"
+            if team_number != len(self.teams) - 1:
+                output += "\n"
+
+        return output
+
+    @property
+    def status_message(self) -> str:
+        match self.game_status:
+            case "PREP":
+                return f"""New game created\\!
+        
+⌛ Waiting for players to /join\\.\\.\\.
+
+Players:
+{self.pretty_player_list}
+
+👤 {self.player_count} players joined\\!
 
 Commands:
-/join - join game
-/start - start game"""
-        )
+/join \\- join game
+/start \\- start game \\({get_user_mention(self.game_creator)} only\\)"""
+
+            case "ACTIVE":
+                return f"""🖼️ Game started\\!
+
+Teams:
+{self.pretty_team_list}
+
+[Play game](https://t.me/{self.bot_username})"""
+
+            case "FINISHED":
+                return "Game is complete! Start a new game with /new"
 
     def get_active_slot_by_user_id(self, user_id: int) -> Slot | None:
         all_players = self.players
@@ -96,11 +171,11 @@ Commands:
         return first_empty_slot
 
     async def finish_round(self, bot: ExtBot):
-        result_msg = await bot.send_message(self.initalization_chat_id, "Done!")
+        result_msg = await bot.send_message(self.game_chat_id, "Done!")
         for player in self.players:
             await bot.send_message(
                 player.id,
-                f"Round finished\\! [View results \\-\\>](https://t.me/c/{str(self.initalization_chat_id)[3:]}/{result_msg.id})",  # todo: substringing like that doesn't work in public groups
+                f"Round finished\\! [View results \\-\\>](https://t.me/c/{str(self.game_chat_id)[3:]}/{result_msg.id})",  # todo: substringing like that doesn't work in public groups
                 parse_mode=constants.ParseMode.MARKDOWN_V2,
             )
 
@@ -108,14 +183,14 @@ Commands:
             image = team.scenario.compose_image()
             image_bytes = pil_image_to_bytes(image)
             await bot.send_photo(
-                self.initalization_chat_id,
+                self.game_chat_id,
                 image_bytes,
                 f"Submission from team {i} (continuing in 5s...)",
             )
             await asyncio.sleep(5)
 
         await bot.send_message(
-            self.initalization_chat_id,
+            self.game_chat_id,
             "All submissions revealed!",
         )
 
@@ -125,9 +200,11 @@ Commands:
         self.current_scenario_index += 1
 
         if self.current_scenario_index >= len(self.scenarios):
+            self.game_status = "FINISHED"
             await bot.send_message(
-                self.initalization_chat_id,
-                "Game is complete! Start a new game with /new",
+                self.game_chat_id,
+                self.status_message,
+                parse_mode=constants.ParseMode.MARKDOWN_V2,
             )
             return
 
@@ -139,7 +216,7 @@ Commands:
             await self.assign_initial_prompts_to_team(team, bot)
 
         await bot.send_message(
-            self.initalization_chat_id,
+            self.game_chat_id,
             f"Next round started\\!\n\n[Play game](https://t.me/{bot.username})",
             parse_mode=constants.ParseMode.MARKDOWN_V2,
         )
@@ -184,13 +261,18 @@ Commands:
         # ]
         self.scenarios = [
             Scenario(scenario_definitions.copy()[0], instruction_set_index=0),
-            Scenario(scenario_definitions.copy()[0], instruction_set_index=1),
-            Scenario(scenario_definitions.copy()[0], instruction_set_index=2),
+            # Scenario(scenario_definitions.copy()[0], instruction_set_index=1),
+            # Scenario(scenario_definitions.copy()[0], instruction_set_index=2),
         ]
 
-    async def start_game(self, bot: ExtBot):
+    async def start_game(self, bot: ExtBot, message: Message) -> None:
         assert self.game_status == "PREP"
         assert self.initalization_msg is not None
+        assert message.from_user is not None
+
+        if self.game_creator.id != message.from_user.id:
+            await message.reply_text("Only the game creator can start the game!")
+            return
 
         self.populate_scenarios()
         self.current_scenario_index = 0
@@ -212,20 +294,20 @@ Commands:
         # 10 => 2 + 2 + 2 + 2 + 2
 
         # split into teams
-        if len(self.player_id_set) <= max_team_size:
+        if len(self.player_ids) <= max_team_size:
             # single player teams
             self.teams = [
                 Team(
                     players=[Player(id=i)],
                     scenario=self.scenarios[self.current_scenario_index].clone(),
                 )
-                for i in self.player_id_set
+                for i in self.player_ids
             ]
         else:
             # pairs of 2 or leftover fills a 3 group
             self.teams = []
 
-            player_pool = list(self.player_id_set.copy())
+            player_pool = list(self.player_ids.copy())
             random.shuffle(player_pool)
 
             team_count = len(player_pool) // 2
@@ -247,14 +329,8 @@ Commands:
         self.game_status = "ACTIVE"
 
         await bot.edit_message_text(
-            f"""New game created\\!
-        
-🖼️ Game started\\!
-
-👤 {self.player_count} players joined\\!
-
-[Play game](https://t.me/{bot.username})""",
-            self.initalization_chat_id,
+            self.status_message,
+            self.game_chat_id,
             self.initalization_msg.id,
             parse_mode=constants.ParseMode.MARKDOWN_V2,
         )
@@ -269,9 +345,6 @@ Commands:
             if len(player.slots) == 0:
                 await self.send_instruction(bot, player.id, slot.prompt)
             player.slots += [slot]
-
-    async def play_round(self, round_id: int):
-        pass
 
     # return exception object if non-terminal error
     async def join_game(
@@ -289,23 +362,17 @@ Commands:
 
             return Exception(msg)
 
-        if join_call_msg.from_user.id in self.player_id_set:
+        if join_call_msg.from_user.id in self.player_ids:
             return Exception("Player already in game")
 
-        self.player_id_set.add(join_call_msg.from_user.id)
+        self.player_ids.add(join_call_msg.from_user.id)
+        self.player_ids_to_user[join_call_msg.from_user.id] = join_call_msg.from_user
 
         await bot.edit_message_text(
-            f"""New game created!
-        
-⌛ Waiting for players to /join...
-
-👤 {self.player_count} players joined!
-
-Commands:
-/join - join game
-/start - start game""",
-            self.initalization_chat_id,
+            self.status_message,
+            self.game_chat_id,
             self.initalization_msg.id,
+            parse_mode=constants.ParseMode.MARKDOWN_V2,
         )
 
         return None
