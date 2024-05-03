@@ -13,5 +13,4 @@ class Settings(BaseSettings):
     webhook_url: str | None = None
 
 
-# pydantic dotenv is dumb here, see https://github.com/pydantic/pydantic/issues/3753
-settings = Settings()  # type: ignore
+settings = Settings()
