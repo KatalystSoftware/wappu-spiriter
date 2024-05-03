@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12.3-slim-bookworm as base
+FROM python:3.12.3-alpine3.19 as base
 
 # Setup ENV variables here (if needed in the future)
 
