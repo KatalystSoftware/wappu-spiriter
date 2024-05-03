@@ -17,7 +17,7 @@ flyctl deploy
 
 ### Pre-requisites
 
-1. [pyenv](https://github.com/pyenv/pyenv?tab=readme-ov-file#installation) and python 3.11.3
+1. [pyenv](https://github.com/pyenv/pyenv?tab=readme-ov-file#installation) and python 3.12.3
 2. [poetry](https://python-poetry.org/docs/)
 3. [poe](https://github.com/nat-n/poethepoet)
 

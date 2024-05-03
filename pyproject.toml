@@ -9,7 +9,7 @@ authors = [
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.11.3"
+python = "3.12.3"
 python-telegram-bot = { extras = ["webhooks"], version = "^21.1.1" }
 pydantic = "^2.7.1"
 pydantic-settings = "^2.2.1"
