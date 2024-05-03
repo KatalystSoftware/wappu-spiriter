@@ -1,8 +1,11 @@
 [tool.poetry]
 name = "wappu_spiriter"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
-authors = ["Mikael Siidorow <mikael.siidorow@aalto.fi>"]
+authors = [
+    "Mikael Siidorow <mikael.siidorow@aalto.fi>",
+    "Patrik Palviainen <patrik.palviainen@aalto.fi>",
+]
 readme = "README.md"
 
 [tool.poetry.dependencies]
