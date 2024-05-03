@@ -1,0 +1,23 @@
+name: Fly Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Lint and typecheck
+    uses: ./.github/workflows/lint.yml
+  deploy:
+    name: Deploy to Fly
+    runs-on: ubuntu-latest
+    concurrency: deploy-group
+    needs:
+      - lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@v1
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
