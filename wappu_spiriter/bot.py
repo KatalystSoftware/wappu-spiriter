@@ -9,13 +9,13 @@ from telegram.ext import (
     filters,
 )
 
+from wappu_spiriter.settings import settings
 from wappu_spiriter.game_context import BotState, GameStateContext
 from wappu_spiriter.game_model import Game
 from wappu_spiriter.image_related.img_from_tg_msg import (
     get_picture_pil_image_from_message,
     get_sticker_pil_image_from_message,
 )
-from wappu_spiriter.settings import Settings
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -138,8 +138,6 @@ async def join_game_handler(update: Update, context: GameStateContext) -> None:
 
 
 def main() -> None:
-    # pydantic dotenv is dumb here
-    settings = Settings()  # type: ignore
     context_types = ContextTypes(context=GameStateContext, bot_data=BotState)
     # persistence = PicklePersistence(filepath="data.pickle", context_types=context_types)
     app = (
@@ -169,4 +167,15 @@ def main() -> None:
         MessageHandler(filters.Sticker.ALL | filters.PHOTO, user_submission_handler)
     )
 
-    app.run_polling()  # todo: shorten polling time
+    if settings.env == "prod":
+        if settings.listen is None or settings.port is None:
+            raise ValueError("Listen and port must be set in production mode!")
+
+        app.run_webhook(
+            settings.listen,
+            settings.port,
+            settings.webhook_path,
+            webhook_url=settings.webhook_url,
+        )
+    else:
+        app.run_polling()

@@ -3,10 +3,19 @@
 app = 'wappu-spiriter'
 primary_region = 'arn'
 
+[env]
+ENV = "prod"
+LISTEN = "0.0.0.0"
+PORT = "8080"
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = "https://wappu-spiriter.fly.dev/webhook"
+
+
 [[services]]
 auto_start_machines = false
 auto_stop_machines = false
 http_checks = []
+internal_port = 8080
 min_machines_running = 1
 processes = ['app']
 protocol = "tcp"

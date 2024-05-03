@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "3.11.3"
-python-telegram-bot = "^21.0.1"
+python-telegram-bot = { extras = ["webhooks"], version = "^21.1.1" }
 pydantic = "^2.6.4"
 pydantic-settings = "^2.2.1"
 openai = "^1.16.2"
@@ -29,6 +29,21 @@ lint = "ruff check ."
 start = "python -m wappu_spiriter"
 dev = "watchfiles \"poe start\" wappu_spiriter"
 
+[tool.mypy]
+plugins = "pydantic.mypy"
+
+warn_redundant_casts = true
+warn_unused_ignores = true
+# disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_reexport = true
+# explicit type defs everywhere for functions
+# disallow_untyped_defs = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
 
 [build-system]
 requires = ["poetry-core"]
