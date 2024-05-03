@@ -9,7 +9,7 @@ FROM base as python-deps
 # Install pipx and poetry
 RUN pip3 install --user pipx
 ENV PATH=/root/.local/bin:$PATH
-RUN pipx install poetry==1.4.2
+RUN pipx install poetry==1.8.2
 ENV PATH=/root/.local/pipx/venvs/poetry/bin:$PATH
 
 # Install python dependencies in /.venv
