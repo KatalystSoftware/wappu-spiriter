@@ -6,7 +6,7 @@ authors = [
     "Mikael Siidorow <mikael.siidorow@aalto.fi>",
     "Patrik Palviainen <patrik.palviainen@aalto.fi>",
 ]
-readme = "README.md"
+readme = "readme.md"
 
 [tool.poetry.dependencies]
 python = "3.12.3"

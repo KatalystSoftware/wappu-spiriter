@@ -15,6 +15,7 @@ ENV PATH=/root/.local/pipx/venvs/poetry/bin:$PATH
 # Install python dependencies in /.venv
 COPY pyproject.toml .
 COPY poetry.lock .
+COPY readme.md .
 RUN poetry config virtualenvs.in-project true
 RUN poetry install --only main
 
