@@ -111,17 +111,17 @@ jail_scenario = ScenarioDefinition(
         {
             "position": (222, 666),
             "size": (333, 333),
-            "prompts": ["a person sitting down not feeling so good"],
+            "prompts": ["someone not feeling well"],
         },
         {
             "position": (333, 1665),
             "size": (2220, 444),
-            "prompts": ["a person laying down"],
+            "prompts": ["someone laying down"],
         },
         {
             "position": (2664, 222),
             "size": (555, 1332),
-            "prompts": ["a person standing up"],
+            "prompts": ["someone standing firmly"],
         },
     ],
 )
