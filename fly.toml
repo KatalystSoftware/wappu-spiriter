@@ -1,0 +1,29 @@
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = 'wappu-spiriter'
+primary_region = 'arn'
+
+[[services]]
+auto_start_machines = false
+auto_stop_machines = false
+http_checks = []
+min_machines_running = 1
+processes = ['app']
+protocol = "tcp"
+script_checks = []
+tcp_checks = []
+
+[[services.ports]]
+force_https = true
+handlers = ["http"]
+port = 80
+
+[[services.ports]]
+handlers = ["tls", "http"]
+port = 443
+
+
+[[vm]]
+memory = '1gb'
+cpu_kind = 'shared'
+cpus = 1

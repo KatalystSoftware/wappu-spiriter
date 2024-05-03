@@ -1,5 +1,18 @@
 # wappu-spiriter
 
+## Production
+
+### Pre-requisites
+
+1. [flyctl](https://fly.io/docs/hands-on/install-flyctl/)
+
+### Deploy
+
+```bash
+# deploy a new version
+flyctl deploy
+```
+
 ## Dev
 
 ### Pre-requisites
