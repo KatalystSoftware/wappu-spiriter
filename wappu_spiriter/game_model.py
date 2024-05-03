@@ -188,10 +188,10 @@ class Game:
             photo_message = await bot.send_photo(
                 self.game_chat_id,
                 image_bytes,
-                f'🖼️ "{self.current_scenario.scenario_definition.name}" by Team {i + 1} (continuing in 5s...)',
+                f'🖼️ "{self.current_scenario.scenario_definition.name}" by Team {i + 1} (continuing in 10 s...)',
             )
             await photo_message.set_reaction("🔥")
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
 
         await bot.send_message(
             self.game_chat_id,
